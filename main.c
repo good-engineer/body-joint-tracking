@@ -50,9 +50,9 @@ k4a_float3_t get_kinect_pos(){
 }
 
 // Send data to unreal engine
-int send_data( k4abt_skeleton_t sk){ 
+int send_data(uint32_t  id, k4abt_skeleton_t sk){ 
     // Todo : Send skeleton
-    // k4a_float3_t position = sk.joints[i].position;
+   
     WSADATA wsdata;
     SOCKET server_socket;
     SOCKADDR_IN server_info;
@@ -60,6 +60,7 @@ int send_data( k4abt_skeleton_t sk){
     int send_size;
     int count;
     char buffer[BUFLEN];
+
 
     printf("\nInitialising Winsock...\n");
     if (WSAStartup(MAKEWORD(2,2),&wsdata) != 0)
@@ -70,7 +71,7 @@ int send_data( k4abt_skeleton_t sk){
     printf("Initialised.\n");
 
     memset( &server_info, 0, sizeof(server_info) ); // fill with zero
-    memset( buffer, 0, BUFLEN );
+    // memset( buffer, 0, BUFLEN );
 
     server_info.sin_family = AF_INET;
     server_info.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -84,8 +85,16 @@ int send_data( k4abt_skeleton_t sk){
         WSACleanup();
         return 1;
     }
+    
+     for (int i = 0; i < (int)K4ABT_JOINT_COUNT; i++){
 
-    while(1){
+        k4a_float3_t position = sk.joints[i].position;
+//      k4a_quaternion_t orientation = sk.joints[i].orientation;
+        k4abt_joint_confidence_level_t confidence_level = sk.joints[i].confidence_level;
+//      printf("Body ID[%u], Joint[%d]: Position[mm] ( %f, %f, %f ); \n",id, i, position.v[0], position.v[1], position.v[2]);
+        snprintf(buffer, sizeof(buffer),"Body ID[%u], Joint[%d]: Position[mm] ( %f, %f, %f ); \n", 
+                                        id, i, position.v[0], position.v[1], position.v[2]);
+        
         send_size = sendto (server_socket, buffer, BUFLEN, 0, (struct sockaddr*) &server_info, sizeof(server_info));
         if(send_size < BUFLEN){
             printf("sendto() error!\n");
@@ -230,12 +239,12 @@ int main(int argc, char** argv)
                         position.v[2] = position.v[2] + kinect_pos.v[2];
 
                         printf("Global Joint[%d]: Position[mm] ( %f, %f, %f ); \n",
-                            i, position.v[0], position.v[1], position.v[3]);
+                            i, position.v[0], position.v[1], position.v[2]);
 
                     }
 
                     // Send data to unreal engine
-                    send_data(body.skeleton);
+                    send_data(body.id, body.skeleton);
                 }
 
                 k4abt_frame_release(body_frame);
