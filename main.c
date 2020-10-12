@@ -16,8 +16,16 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <k4a/k4a.h>
-#include <k4abt.h>
+#include <k4abt.h> 
+#include <string.h> 
+#include <sys/types.h> 
+#include <winsock2.h>
+#include <windows.h> 
 
+#pragma comment(lib,"ws2_32.lib") //Winsock Library
+
+#define BUFLEN 1024	//Max length of buffer
+#define Port 61557
 #define VERIFY(result, error)                                                                            \
     if(result != K4A_RESULT_SUCCEEDED)                                                                   \
     {                                                                                                    \
@@ -30,12 +38,82 @@ void inthand(int signum) {
     stop = 1;
 }
 
+// Get Global position of Kinect using Beacon
+k4a_float3_t get_kinect_pos(){
+    // TODO: Get Global position of Kinect using Beacon
+    k4a_float3_t kinect_pos;
+    kinect_pos.v[0] = 0;
+    kinect_pos.v[1] = 0;
+    kinect_pos.v[2] = 0;
+
+    return kinect_pos;
+}
+
+// Send data to unreal engine
+int send_data( k4abt_skeleton_t sk){ 
+    // Todo : Send skeleton
+    // k4a_float3_t position = sk.joints[i].position;
+    WSADATA wsdata;
+    SOCKET server_socket;
+    SOCKADDR_IN server_info;
+
+    int send_size;
+    int count;
+    char buffer[BUFLEN];
+
+    printf("\nInitialising Winsock...\n");
+    if (WSAStartup(MAKEWORD(2,2),&wsdata) != 0)
+	{
+		printf("Failed. Error Code : %d\n",WSAGetLastError());
+		return 1;
+	}
+    printf("Initialised.\n");
+
+    memset( &server_info, 0, sizeof(server_info) ); // fill with zero
+    memset( buffer, 0, BUFLEN );
+
+    server_info.sin_family = AF_INET;
+    server_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_info.sin_port = htons(Port);
+
+    // Create socket
+    server_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if(server_socket == INVALID_SOCKET) {
+        printf("Can not create the socket!\n");
+        closesocket(server_socket);
+        WSACleanup();
+        return 1;
+    }
+
+    while(1){
+        send_size = sendto (server_socket, buffer, BUFLEN, 0, (struct sockaddr*) &server_info, sizeof(server_info));
+        if(send_size < BUFLEN){
+            printf("sendto() error!\n");
+            return 1;
+        }   
+    }
+
+    closesocket(server_socket);
+ 
+    WSACleanup();
+
+    return 0;
+}
+
+
 int main(int argc, char** argv)
 {
     printf("-------------------Body Joint Tracking----------------------\n");
     printf("Process has started! you can stop tracking by pressing ctr+c keys!\n");
 
     signal(SIGINT, inthand);
+
+    /**=======================
+     * todo      Get kinect global position using beacon
+     *========================**/
+    
+    // Kinect camera global position
+    k4a_float3_t kinect_pos = get_kinect_pos(); 
 
     // Count connected devices
     uint32_t count = k4a_device_get_installed_count();
@@ -118,26 +196,46 @@ int main(int argc, char** argv)
                     VERIFY(k4abt_frame_get_body_skeleton(body_frame, i, &body.skeleton), "Get body from body frame failed!");
                     body.id = k4abt_frame_get_body_id(body_frame, i);
                     printf("Body ID: %u\n", body.id);
+                    
                     for (int i = 0; i < (int)K4ABT_JOINT_COUNT; i++)
                     {
                         k4a_float3_t position = body.skeleton.joints[i].position;
                         k4a_quaternion_t orientation = body.skeleton.joints[i].orientation;
                         k4abt_joint_confidence_level_t confidence_level = body.skeleton.joints[i].confidence_level;
+                       
+                        /* INFO:
+                        typedef union {
+                        ! XYZ or array representation of vector.
+                        struct _xyz
+                        {
+                            float x; /**< X component of a vector. 
+                            float y; /**< Y component of a vector. 
+                            float z; /**< Z component of a vector. 
+                        } xyz;       /**< X, Y, Z representation of a vector. 
+                        float v[3];  /**< Array representation of a vector.
+                        } k4a_float3_t;
+                        */
+
                         /**==============================================
                          * todo           Convert the coordinate
-                         *   Get kinect location by beacon installed on it
-                         *   Convert the coordinate
+                         *   Convert the coordinate using kinect global position
                          *   Send the converted data (body id and body joints)
                          *=============================================**/
-                        printf("Joint[%d]: Position[mm] ( %f, %f, %f ); Orientation ( %f, %f, %f, %f); Confidence Level (%d) \n",
-                            i, position.v[0], position.v[1], position.v[2], orientation.v[0], orientation.v[1], orientation.v[2], orientation.v[3], confidence_level);
 
-                        /**=======================
-                         * todo      Send data
-                         *  Send data using UDP
-                         *  Body id and body joints
-                         *========================**/
+                        printf("Body ID: %d ; Original Joint[%d]: Position[mm] ( %f, %f, %f ); Orientation ( %f, %f, %f, %f); Confidence Level (%d) \n",
+                           body.id, i, position.v[0], position.v[1], position.v[2], orientation.v[0], orientation.v[1], orientation.v[2], orientation.v[3], confidence_level);
+                        // Convert the position
+                        position.v[0] = position.v[0] + kinect_pos.v[0];
+                        position.v[1] = position.v[1] + kinect_pos.v[1];
+                        position.v[2] = position.v[2] + kinect_pos.v[2];
+
+                        printf("Global Joint[%d]: Position[mm] ( %f, %f, %f ); \n",
+                            i, position.v[0], position.v[1], position.v[3]);
+
                     }
+
+                    // Send data to unreal engine
+                    send_data(body.skeleton);
                 }
 
                 k4abt_frame_release(body_frame);
