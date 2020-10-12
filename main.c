@@ -24,7 +24,7 @@
 
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
 
-#define BUFLEN 1024	//Max length of buffer
+#define BUFLEN 1024	//Max length of buffer // TODO: rearrange buffer size
 #define Port 61557
 #define VERIFY(result, error)                                                                            \
     if(result != K4A_RESULT_SUCCEEDED)                                                                   \
@@ -51,7 +51,6 @@ k4a_float3_t get_kinect_pos(){
 
 // Send data to unreal engine
 int send_data(uint32_t  id, k4abt_skeleton_t sk){ 
-    // Todo : Send skeleton
    
     WSADATA wsdata;
     SOCKET server_socket;
@@ -119,6 +118,7 @@ int main(int argc, char** argv)
 
     /**=======================
      * todo      Get kinect global position using beacon
+     *  Implement below function
      *========================**/
     
     // Kinect camera global position
@@ -224,12 +224,6 @@ int main(int argc, char** argv)
                         float v[3];  /**< Array representation of a vector.
                         } k4a_float3_t;
                         */
-
-                        /**==============================================
-                         * todo           Convert the coordinate
-                         *   Convert the coordinate using kinect global position
-                         *   Send the converted data (body id and body joints)
-                         *=============================================**/
 
                         printf("Body ID: %d ; Original Joint[%d]: Position[mm] ( %f, %f, %f ); Orientation ( %f, %f, %f, %f); Confidence Level (%d) \n",
                            body.id, i, position.v[0], position.v[1], position.v[2], orientation.v[0], orientation.v[1], orientation.v[2], orientation.v[3], confidence_level);
