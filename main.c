@@ -6,9 +6,24 @@
  * @email       : ms_danesh@hotmail.com
  * @repo        : good-engineer
  * @createdOn   : kinect azure SDK
- * @description : body joint tracking, coordinate conversion, data sending
+ * @description : body joint tracking, coordinate conversion, data sending to unreal engine
  *  the app stops tracking when press ctr+c
  *=============================================**/
+
+
+/**===========================================
+* ?                     INFO
+typedef union {
+! XYZ or array representation of vector.
+struct _xyz
+{
+    float x; /**< X component of a vector
+    float y; /**< Y component of a vector 
+    float z; /**< Z component of a vector 
+} xyz;       /**< X, Y, Z representation of a vector. 
+float v[3];  /**< Array representation of a vector.
+} k4a_float3_t;
+===========================================**/
 
 #include <assert.h>
 #include <stdbool.h>
@@ -211,19 +226,6 @@ int main(int argc, char** argv)
                         k4a_float3_t position = body.skeleton.joints[i].position;
                         k4a_quaternion_t orientation = body.skeleton.joints[i].orientation;
                         k4abt_joint_confidence_level_t confidence_level = body.skeleton.joints[i].confidence_level;
-                       
-                        /* INFO:
-                        typedef union {
-                        ! XYZ or array representation of vector.
-                        struct _xyz
-                        {
-                            float x; /**< X component of a vector. 
-                            float y; /**< Y component of a vector. 
-                            float z; /**< Z component of a vector. 
-                        } xyz;       /**< X, Y, Z representation of a vector. 
-                        float v[3];  /**< Array representation of a vector.
-                        } k4a_float3_t;
-                        */
 
                         printf("Body ID: %d ; Original Joint[%d]: Position[mm] ( %f, %f, %f ); Orientation ( %f, %f, %f, %f); Confidence Level (%d) \n",
                            body.id, i, position.v[0], position.v[1], position.v[2], orientation.v[0], orientation.v[1], orientation.v[2], orientation.v[3], confidence_level);
