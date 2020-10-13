@@ -36,6 +36,7 @@ float v[3];  /**< Array representation of a vector.
 #include <sys/types.h> 
 #include <winsock2.h>
 #include <windows.h> 
+#include <marvelmind.h>
 
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
 
@@ -57,10 +58,34 @@ void inthand(int signum) {
 k4a_float3_t get_kinect_pos(){
     // TODO: Get Global position of Kinect using Beacon
     k4a_float3_t kinect_pos;
-    kinect_pos.v[0] = 0;
-    kinect_pos.v[1] = 0;
-    kinect_pos.v[2] = 0;
+    kinect_pos.v[0] = -1;
+    kinect_pos.v[1] = -1;
+    kinect_pos.v[2] = -1;
 
+
+    // Init
+    struct MarvelmindHedge * hedge=createMarvelmindHedge ();
+    if (hedge==NULL)
+    {
+        puts ("Error: Unable to create MarvelmindHedge");
+        return kinect_pos;
+    }
+    startMarvelmindHedge (hedge);
+    
+    // Get the position of mobile beacon
+    struct PositionValue position; 
+    bool valid = getPositionFromMarvelmindHedge(hedge, &position);
+    
+    if(valid){
+        kinect_pos.v[0] = position.x;
+        kinect_pos.v[1] = position.y;
+        kinect_pos.v[2] = position.z;
+    }
+
+    // Exit
+    stopMarvelmindHedge (hedge);
+    destroyMarvelmindHedge (hedge);
+    
     return kinect_pos;
 }
 
@@ -229,6 +254,7 @@ int main(int argc, char** argv)
 
                         printf("Body ID: %d ; Original Joint[%d]: Position[mm] ( %f, %f, %f ); Orientation ( %f, %f, %f, %f); Confidence Level (%d) \n",
                            body.id, i, position.v[0], position.v[1], position.v[2], orientation.v[0], orientation.v[1], orientation.v[2], orientation.v[3], confidence_level);
+                        
                         // Convert the position
                         position.v[0] = position.v[0] + kinect_pos.v[0];
                         position.v[1] = position.v[1] + kinect_pos.v[1];
