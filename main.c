@@ -92,60 +92,25 @@ k4a_float3_t get_kinect_pos(){
 }
 
 // Send data to unreal engine
-int send_data(uint32_t  id, k4abt_skeleton_t sk){ 
-   
-    WSADATA wsdata;
-    SOCKET server_socket;
-    SOCKADDR_IN server_info;
-
-    int send_size;
-    int count;
-    char buffer[BUFLEN];
-
-
-    printf("\nInitialising Winsock...\n");
-    if (WSAStartup(MAKEWORD(2,2),&wsdata) != 0)
-	{
-		printf("Failed. Error Code : %d\n",WSAGetLastError());
-		return -1;
-	}
-    printf("Initialised.\n");
-
-    memset( &server_info, 0, sizeof(server_info) ); // fill with zero
-    // memset( buffer, 0, BUFLEN );
-
-    server_info.sin_family = AF_INET;
-    server_info.sin_addr.s_addr = htonl(INADDR_ANY);
-    server_info.sin_port = htons(Port);
-
-    // Create socket
-    server_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if(server_socket == INVALID_SOCKET) {
-        printf("Can not create the socket!\n");
-        closesocket(server_socket);
-        WSACleanup();
-        return -1;
-    }
+int send_data(uint32_t  id, k4abt_skeleton_t sk, SOCKET server_socket, SOCKADDR_IN server_info){
     
-     for (int i = 0; i < (int)K4ABT_JOINT_COUNT; i++){
+     int send_size;
+     char buffer[BUFLEN];
+     memset( buffer, 0, BUFLEN );
 
+     for (int i = 0; i < (int)K4ABT_JOINT_COUNT; i++){
         k4a_float3_t position = sk.joints[i].position;
-//      k4a_quaternion_t orientation = sk.joints[i].orientation;
+//      k4a_quaternion_t orientation = sk.joints[i].orientation; add in future
         k4abt_joint_confidence_level_t confidence_level = sk.joints[i].confidence_level;
-//      printf("Body ID[%u], Joint[%d]: Position[mm] ( %f, %f, %f ); \n",id, i, position.v[0], position.v[1], position.v[2]);
         snprintf(buffer, sizeof(buffer),"Body ID[%u], Joint[%d]: Position[mm] ( %f, %f, %f ); \n", 
                                         id, i, position.v[0], position.v[1], position.v[2]);
-        
+
         send_size = sendto (server_socket, buffer, BUFLEN, 0, (struct sockaddr*) &server_info, sizeof(server_info));
         if(send_size == SOCKET_ERROR){
-            printf("sendto() buffer %d!\n", send_size);
             return -1;
         }   
+        printf("sendto() buffer %d!\n", send_size);
     }
-
-    closesocket(server_socket);
- 
-    WSACleanup();
 
     return 0;
 }
@@ -158,6 +123,34 @@ int main(int argc, char** argv)
 
     signal(SIGINT, inthand);
 
+    //* Data sending settings 
+    WSADATA wsdata;
+    SOCKET server_socket;
+    SOCKADDR_IN server_info;
+    
+    printf("\nInitialising Winsock...\n");
+    if (WSAStartup(MAKEWORD(2, 2), &wsdata) != 0)
+    {
+        printf("Failed. Error Code : %d\n", WSAGetLastError());
+        return -1;
+    }
+    printf("Initialised.\n");
+
+    memset(&server_info, 0, sizeof(server_info)); // fill with zero
+
+    server_info.sin_family = AF_INET;
+    server_info.sin_addr.s_addr = inet_addr("192.168.0.24");
+    server_info.sin_port = htons(Port);
+
+    // Create socket
+    server_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (server_socket == INVALID_SOCKET) {
+        printf("Can not create the socket!\n");
+        closesocket(server_socket);
+        WSACleanup();
+        return -1;
+    }
+
     /**=======================
      * todo      Get kinect global position using beacon
      *  Implement below function
@@ -165,48 +158,7 @@ int main(int argc, char** argv)
     
     // Kinect camera global position
     k4a_float3_t kinect_pos = get_kinect_pos(); 
- /*
-    // Count connected devices
-    uint32_t count = k4a_device_get_installed_count();
-    if (count == 0) {
-        printf("No kinect azure devices has attached!\n");
-        return 1;
-    }
-
-    // Configure a stream of 4096x3072 BRGA color data at 30 frames per second
-    k4a_device_configuration_t config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
-    config.camera_fps = K4A_FRAMES_PER_SECOND_30;
-    config.color_format = K4A_IMAGE_FORMAT_COLOR_BGRA32;
-    config.color_resolution = K4A_COLOR_RESOLUTION_3072P;
-    config.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
-
-    // Open the first plugged in Kinect device
-    k4a_device_t device = NULL;
-    VERIFY(k4a_device_open(0, &device), "Open K4A Device failed!\n");
-
-    // Get the size of the serial number
-    size_t serial_size = 0;
-    k4a_device_get_serialnum(device, NULL, &serial_size);
-
-    // Allocate memory for the serial, then acquire it
-    char* serial = (char*)(malloc(serial_size));
-    k4a_device_get_serialnum(device, serial, &serial_size);
-    printf("Device with %s serial number has successfuly opened!\n", serial);
-    free(serial);
-
-    // Start the camera with the given configuration
-    VERIFY(k4a_device_start_cameras(device, &config), "Start K4A cameras failed!\n");
-
-    // Sensor calibration
-    k4a_calibration_t sensor_calibration;
-    VERIFY(k4a_device_get_calibration(device, config.depth_mode, K4A_COLOR_RESOLUTION_OFF, &sensor_calibration),
-        "Get depth camera calibration failed!\n");
-
-    // Intialize body tracker
-    k4abt_tracker_t tracker = NULL;
-    k4abt_tracker_configuration_t tracker_config = K4ABT_TRACKER_CONFIG_DEFAULT;
-    VERIFY(k4abt_tracker_create(&sensor_calibration, tracker_config, &tracker), "Body tracker initialization failed!");
-*/
+ 
     k4a_device_configuration_t device_config = K4A_DEVICE_CONFIG_INIT_DISABLE_ALL;
     device_config.depth_mode = K4A_DEPTH_MODE_NFOV_UNBINNED;
 
@@ -282,7 +234,7 @@ int main(int argc, char** argv)
                     }
 
                     // Send data to unreal engine
-                    if (send_data(body.id, body.skeleton) != 0)
+                    if (send_data(body.id, body.skeleton, server_socket,server_info) !=0)
                         printf("data is not sent!\n");
                 }
 
@@ -315,11 +267,15 @@ int main(int argc, char** argv)
     } while (!stop);
 
     printf("Finished body tracking processing!\n");
+   
+    closesocket(server_socket);
+    WSACleanup();
 
     // Shut down the camera when finished with application logic
     k4abt_tracker_shutdown(tracker);
     k4abt_tracker_destroy(tracker);
     k4a_device_stop_cameras(device);
+    printf("Socket has closed.\n");
 
     // Close the device 
     k4a_device_close(device);
