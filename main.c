@@ -41,7 +41,7 @@ float v[3];  /**< Array representation of a vector.
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
 
 #define BUFLEN 1024	//Max length of buffer // TODO: rearrange buffer size
-#define Port 61557
+#define Port 8080
 #define VERIFY(result, error)                                                                            \
     if(result != K4A_RESULT_SUCCEEDED)                                                                   \
     {                                                                                                    \
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
     memset(&server_info, 0, sizeof(server_info)); // fill with zero
 
     server_info.sin_family = AF_INET;
-    server_info.sin_addr.s_addr = inet_addr("192.168.0.24");
+    server_info.sin_addr.s_addr = inet_addr("127.0.0.1");
     server_info.sin_port = htons(Port);
 
     // Create socket
