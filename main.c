@@ -40,7 +40,7 @@ float v[3];  /**< Array representation of a vector.
 
 #pragma comment(lib,"ws2_32.lib") //Winsock Library
 
-#define BUFLEN 1024	//Max length of buffer // TODO: rearrange buffer size
+#define BUFLEN 100	//Max length of buffer // TODO: rearrange buffer size
 #define Port 8080
 #define VERIFY(result, error)                                                                            \
     if(result != K4A_RESULT_SUCCEEDED)                                                                   \
@@ -63,7 +63,7 @@ k4a_float3_t get_kinect_pos(){
     kinect_pos.v[2] = 0;
 
     /*
-    * // Init
+    * // Init marvel mind 
     struct MarvelmindHedge * hedge=createMarvelmindHedge ();
     if (hedge==NULL)
     {
@@ -92,7 +92,7 @@ k4a_float3_t get_kinect_pos(){
 }
 
 // Send data to unreal engine
-int send_data(uint32_t  id, k4abt_skeleton_t sk, SOCKET server_socket, SOCKADDR_IN server_info){
+int send_data(int frame_count, uint32_t  id, k4abt_skeleton_t sk, SOCKET server_socket, SOCKADDR_IN server_info){
     
      int send_size;
      char buffer[BUFLEN];
@@ -102,7 +102,7 @@ int send_data(uint32_t  id, k4abt_skeleton_t sk, SOCKET server_socket, SOCKADDR_
         k4a_float3_t position = sk.joints[i].position;
 //      k4a_quaternion_t orientation = sk.joints[i].orientation; add in future
         k4abt_joint_confidence_level_t confidence_level = sk.joints[i].confidence_level;
-        snprintf(buffer, sizeof(buffer),"Body ID[%u], Joint[%d]: Position[mm] ( %f, %f, %f ); \n", 
+        snprintf(buffer, sizeof(buffer),"Frame: %d, Body ID[%u], Joint[%d]: Position[mm] ( %f, %f, %f ); \n", 
                                         id, i, position.v[0], position.v[1], position.v[2]);
 
         send_size = sendto (server_socket, buffer, BUFLEN, 0, (struct sockaddr*) &server_info, sizeof(server_info));
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
     memset(&server_info, 0, sizeof(server_info)); // fill with zero
 
     server_info.sin_family = AF_INET;
-    server_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_info.sin_addr.s_addr = inet_addr("192.168.0.24");
     server_info.sin_port = htons(Port);
 
     // Create socket
@@ -152,8 +152,8 @@ int main(int argc, char** argv)
     }
 
     /**=======================
-     * todo      Get kinect global position using beacon
-     *  Implement below function
+     * todo     Test Geting kinect global position using beacon
+     * 
      *========================**/
     
     // Kinect camera global position
@@ -234,7 +234,7 @@ int main(int argc, char** argv)
                     }
 
                     // Send data to unreal engine
-                    if (send_data(body.id, body.skeleton, server_socket,server_info) !=0)
+                    if (send_data(frame_count, body.id, body.skeleton, server_socket,server_info) !=0)
                         printf("data is not sent!\n");
                 }
 
